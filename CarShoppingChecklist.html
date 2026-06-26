@@ -8,53 +8,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <style>
+    /* Main app UI styles only — print CSS lives in PRINT_CSS constant inside the script */
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; padding: 0; font-family: 'Inter', system-ui, sans-serif; background: #f8f8f6; }
-    @media print {
-      @page { size: letter landscape; margin: 0.35in; }
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .no-print { display: none !important; }
-      .print-page { page-break-after: always; page-break-inside: avoid; }
-      .print-page:last-child { page-break-after: avoid; }
-      .print-header { background: #1c1b18 !important; color: #fff !important;
-        padding: 7px 10px; margin-bottom: 7px; border-left: 4px solid #1a6b3c; }
-      .print-header-title { font-size: 11pt; font-weight: 700; }
-      .print-header-sub   { font-size: 7.5pt; color: #aaa; margin-top: 1px; }
-      .print-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-      /* ── Compare print grid — supports 2 or 3 vehicles ── */
-      .print-cmp2 { display: grid; grid-template-columns: 180px 1fr 1fr; }
-      .print-cmp3 { display: grid; grid-template-columns: 160px 1fr 1fr 1fr; }
-      .print-cmp-wrap { border: 1px solid #ccc; border-radius: 4px; overflow: hidden; font-size: 7pt; }
-      .print-cmp-head { background: #1c1b18 !important; color: #fff !important;
-        padding: 5px 7px; font-weight: 700; font-size: 8.5pt; }
-      .print-cmp-section { background: #e8ede8 !important; padding: 3px 8px;
-        font-weight: 700; font-size: 7.5pt; border-top: 1px solid #bbb; grid-column: 1 / -1; }
-      .print-cmp-label { padding: 3px 7px; border-top: 1px solid #eee;
-        color: #3a3830; line-height: 1.3; border-right: 1px solid #eee; }
-      .print-cmp-cell  { padding: 3px 7px; border-top: 1px solid #eee; line-height: 1.3; border-right: 1px solid #eee; }
-      .print-cmp-cell:last-child { border-right: none; }
-      .print-cmp-cell.ck  { color: #1a6b3c; font-weight: 700; }
-      .print-cmp-cell.unc { color: #aaa; }
-      .print-cmp-note { font-style: italic; color: #555; font-size: 6.5pt; }
-      .print-cmp-diff { background: #fffbea !important; }
-      .print-cmp-good { background: #f0faf2 !important; }
-      .print-cmp-warn { background: #fff4e5 !important; }
-      /* ── Vehicle / dealer per-page print ── */
-      .print-section { margin-bottom: 4px; border: 1px solid #ddd; border-radius: 3px; overflow: hidden; }
-      .print-section-header { background: #f4f4f2 !important; padding: 3px 8px;
-        font-weight: 700; font-size: 8pt; display: flex; justify-content: space-between; }
-      .print-item { display: flex; align-items: flex-start; gap: 5px;
-        padding: 2px 8px; border-top: 1px solid #eee; font-size: 7.5pt; line-height: 1.3; }
-      .print-check { width: 9px; height: 9px; border: 1.5px solid #666; border-radius: 1px;
-        flex-shrink: 0; margin-top: 1px; background: #fff; display: inline-block; }
-      .print-check.checked { background: #1a6b3c !important; border-color: #1a6b3c !important; }
-      .print-note { font-size: 7pt; color: #555; font-style: italic;
-        padding: 2px 8px 3px 22px; border-top: 1px dashed #eee; }
-      .print-rating-row { padding: 2px 8px 4px; font-size: 7pt; color: #555;
-        border-top: 1px dashed #eee; display: flex; gap: 6px; align-items: center; }
-      .print-stars { color: #c47f00 !important; }
-      .print-dealer-meta { font-size: 7.5pt; color: #555; padding: 2px 10px 5px; }
-    }
   </style>
 </head>
 <body>
@@ -390,16 +346,87 @@ function App() {
   };
 
   // ── Print helpers ────────────────────────────────────────────────────────────
-  const openPrintWin=(title,body,orient="landscape")=>{
+  // All print output is landscape letter. The print window auto-triggers the
+  // browser print dialog — on iPhone Safari choose "Save as PDF"; on desktop
+  // choose "Save as PDF" / "Microsoft Print to PDF" for a portable file.
+  // The PDF tip banner at top of each print window reminds you of this.
+
+  const PDF_TIP = `<div class="pdf-tip" style="background:#1a6b3c;color:#fff;padding:7px 12px;
+    font-size:8.5pt;font-weight:600;margin-bottom:8px;border-radius:3px;display:flex;
+    align-items:center;gap:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+    📄 To save as PDF: <span style="opacity:0.85;font-weight:400;">
+    iPhone Safari → Share → Print → Pinch-zoom thumbnail → Share → Save to Files &nbsp;|&nbsp;
+    Desktop → Print → Destination: Save as PDF</span></div>`;
+
+  // Shared print CSS injected into every print window
+  const PRINT_CSS = `
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Inter',system-ui,sans-serif;background:#fff;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{size:letter landscape;margin:0.3in;}
+    .pdf-tip{display:none;}
+    @media screen{.pdf-tip{display:flex;}}
+    .print-page{page-break-after:always;break-after:page;}
+    .print-page:last-child{page-break-after:avoid;break-after:avoid;}
+    /* header */
+    .print-header{background:#1c1b18!important;color:#fff!important;
+      padding:6px 10px;margin-bottom:5px;border-left:4px solid #1a6b3c;}
+    .print-header-title{font-size:10.5pt;font-weight:700;}
+    .print-header-sub{font-size:6.5pt;color:#bbb;margin-top:1px;}
+    /* vehicle 3-col */
+    .print-three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;}
+    /* dealer 2-col */
+    .print-two-col{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+    /* shared section/item */
+    .print-section{margin-bottom:3px;border:1px solid #ddd;border-radius:2px;
+      overflow:hidden;break-inside:avoid;}
+    .print-section-header{background:#f0f0ee!important;padding:2px 7px;font-weight:700;
+      font-size:7.5pt;display:flex;justify-content:space-between;}
+    .print-item{display:flex;align-items:flex-start;gap:4px;padding:1.5px 7px;
+      border-top:1px solid #eee;font-size:6.5pt;line-height:1.25;}
+    .print-check{width:8px;height:8px;border:1.5px solid #777;border-radius:1px;
+      flex-shrink:0;margin-top:1px;background:#fff;display:inline-block;}
+    .print-check.checked{background:#1a6b3c!important;border-color:#1a6b3c!important;}
+    .print-note{font-size:6.5pt;color:#555;font-style:italic;
+      padding:1px 7px 2px 20px;border-top:1px dashed #eee;}
+    .print-rating-row{padding:1.5px 7px 3px;font-size:6.5pt;color:#555;
+      border-top:1px dashed #eee;display:flex;gap:5px;align-items:center;}
+    .print-stars{color:#c47f00!important;}
+    .print-dealer-meta{font-size:7pt;color:#555;padding:2px 9px 4px;}
+    /* compare grids */
+    .print-cmp-wrap{border:1px solid #ccc;border-radius:3px;overflow:hidden;font-size:6.5pt;}
+    .print-cmp2{display:grid;grid-template-columns:175px 1fr 1fr;}
+    .print-cmp3{display:grid;grid-template-columns:155px 1fr 1fr 1fr;}
+    .print-cmp-head{background:#1c1b18!important;color:#fff!important;
+      padding:4px 7px;font-weight:700;font-size:8pt;}
+    .print-cmp-section{background:#dde8dd!important;padding:2px 7px;font-weight:700;
+      font-size:7pt;border-top:1px solid #aaa;grid-column:1/-1;}
+    .print-cmp-label{padding:2px 6px;border-top:1px solid #eee;
+      color:#3a3830;line-height:1.25;border-right:1px solid #eee;}
+    .print-cmp-cell{padding:2px 6px;border-top:1px solid #eee;
+      line-height:1.25;border-right:1px solid #eee;}
+    .print-cmp-cell:last-child{border-right:none;}
+    .print-cmp-cell.ck{color:#1a6b3c;font-weight:700;}
+    .print-cmp-cell.unc{color:#bbb;}
+    .print-cmp-note{font-style:italic;color:#666;font-size:6pt;}
+    .print-cmp-diff{background:#fffbea!important;}
+  `;
+
+  const openPrintWin=(title,body)=>{
     const win=window.open("","_blank");
-    const css=document.querySelector("style").textContent;
     win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
-      <style>body{margin:0;font-family:'Inter',system-ui,sans-serif;}
-      @page{size:letter ${orient};margin:0.35in;}${css}</style>
-      </head><body>${body}</body></html>`);
-    win.document.close();win.focus();setTimeout(()=>win.print(),400);
+      <style>${PRINT_CSS}</style></head>
+      <body>${PDF_TIP}${body}</body></html>`);
+    win.document.close();win.focus();
+    // Slight delay lets Safari render before triggering print dialog
+    setTimeout(()=>win.print(),600);
   };
 
+  // ── Vehicles: landscape, 3 columns, target 1 page per vehicle ──────────────
+  // 8 sections split as 3 / 3 / 2 across three columns.
+  // At 6.5pt with ~7.8" usable height on landscape letter this fits comfortably
+  // for all vehicles without notes; notes push a section to a 2nd page only if
+  // very long — acceptable since user controls note length.
   const buildVehiclePrintPages=()=>VEHICLES.map(v=>{
     const prog=overallProgress(v.id,checks,VEHICLE_SECTIONS);
     const secs=VEHICLE_SECTIONS.map(sec=>{
@@ -410,27 +437,36 @@ function App() {
         const ck=checks[v.id+"|"+sec.id+"|"+it.id]||false;
         return `<div class="print-item"><span class="print-check ${ck?"checked":""}"></span><span>${it.text}</span></div>`;
       }).join("");
+      const ratingLine=r>0?`<div class="print-rating-row">Rating: <span class="print-stars">${starStr(r)}</span></div>`:"";
       return `<div class="print-section">
-        <div class="print-section-header"><span>${sec.icon} ${sec.label}</span><span>${p.done}/${p.total}${r>0?" · "+starStr(r):""}</span></div>
-        ${rows}${n?`<div class="print-note">Notes: ${n}</div>`:""}
+        <div class="print-section-header"><span>${sec.icon} ${sec.label}</span><span>${p.done}/${p.total}</span></div>
+        ${rows}${ratingLine}${n?`<div class="print-note">Notes: ${n}</div>`:""}
       </div>`;
     });
+    // Split 8 sections: col1=0-2, col2=3-5, col3=6-7
     return `<div class="print-page">
       <div class="print-header">
         <div class="print-header-title">${v.label}</div>
-        <div class="print-header-sub">MSRP ${v.msrp} · ${prog.done}/${prog.total} evaluated (${prog.pct}%) · Printed ${new Date().toLocaleDateString()}</div>
+        <div class="print-header-sub">MSRP ${v.msrp} &nbsp;·&nbsp; ${prog.done}/${prog.total} items evaluated (${prog.pct}%) &nbsp;·&nbsp; Printed ${new Date().toLocaleDateString()}</div>
       </div>
-      <div class="print-two-col"><div>${secs.slice(0,4).join("")}</div><div>${secs.slice(4).join("")}</div></div>
+      <div class="print-three-col">
+        <div>${secs.slice(0,3).join("")}</div>
+        <div>${secs.slice(3,6).join("")}</div>
+        <div>${secs.slice(6).join("")}</div>
+      </div>
     </div>`;
   }).join("");
 
-  const printVehicles=()=>openPrintWin("Vehicle Checklists",buildVehiclePrintPages(),"portrait");
+  const printVehicles=()=>openPrintWin("Vehicle Checklists — Car Shopping 2026",buildVehiclePrintPages());
 
+  // ── Dealers: landscape, 2 columns, 1 page per dealer ───────────────────────
+  // dealer_service has 11 items — fits in 1 column at 6.5pt; 2 cols fills page.
+  // We put the checklist in col1 and notes/rating in col2.
   const printDealers=()=>{
     const pages=DEALERS.map(d=>{
       const prog=overallProgress(d.id,dealerChecks,DEALER_SECTIONS);
-      const r=dealerRatings[d.id+"|overall"]||0;
-      const n=dealerNotes[d.id+"|overall"]||"";
+      const overall_r=dealerRatings[d.id+"|overall"]||0;
+      const overall_n=dealerNotes[d.id+"|overall"]||"";
       const secs=DEALER_SECTIONS.map(sec=>{
         const p=sectionProgress(d.id,sec,dealerChecks);
         const sr=dealerRatings[d.id+"|"+sec.id]||0;
@@ -444,29 +480,47 @@ function App() {
           ${rows}${sn?`<div class="print-note">Notes: ${sn}</div>`:""}
         </div>`;
       }).join("");
+      // Right column: overall notes + rating + DR data
+      const rightCol=`
+        <div class="print-section">
+          <div class="print-section-header">📋 Overall Notes &amp; Rating</div>
+          ${overall_n?`<div class="print-note" style="padding:5px 8px;font-style:normal;font-size:7pt;">${overall_n}</div>`
+            :`<div class="print-note">No notes recorded yet.</div>`}
+          ${overall_r>0?`<div class="print-rating-row">Overall: <span class="print-stars">${starStr(overall_r)}</span></div>`:""}
+        </div>
+        <div class="print-section">
+          <div class="print-section-header">📊 At a Glance</div>
+          <div class="print-item"><span>Brand:</span>&nbsp;<strong>${d.brand}</strong></div>
+          <div class="print-item"><span>Distance from Vernon:</span>&nbsp;${d.dist}</div>
+          <div class="print-item"><span>Phone:</span>&nbsp;${d.phone}</div>
+          <div class="print-item"><span>DealerRater:</span>&nbsp;${d.drRating} (${d.drReviews} reviews)</div>
+          <div class="print-item"><span>Checklist completion:</span>&nbsp;${prog.done}/${prog.total} (${prog.pct}%)</div>
+        </div>`;
       return `<div class="print-page">
         <div class="print-header">
           <div class="print-header-title">${d.label} — ${d.town}, CT</div>
-          <div class="print-header-sub">${d.dist} from Vernon · ${d.phone} · DealerRater: ${d.drRating} (${d.drReviews} reviews) · Printed ${new Date().toLocaleDateString()}</div>
+          <div class="print-header-sub">${d.dist} from Vernon &nbsp;·&nbsp; ${d.phone} &nbsp;·&nbsp; DealerRater: ${d.drRating} (${d.drReviews} reviews) &nbsp;·&nbsp; Printed ${new Date().toLocaleDateString()}</div>
         </div>
-        <div class="print-dealer-meta">Brand: ${d.brand} · ${prog.done}/${prog.total} items evaluated (${prog.pct}%)</div>
-        ${secs}
-        ${n?`<div class="print-section"><div class="print-section-header"><span>📋 Overall Notes</span></div><div class="print-note">${n}</div></div>`:""}
-        ${r>0?`<div class="print-rating-row">Overall rating: <span class="print-stars">${starStr(r)}</span></div>`:""}
+        <div class="print-two-col">
+          <div>${secs}</div>
+          <div>${rightCol}</div>
+        </div>
       </div>`;
     }).join("");
-    openPrintWin("Dealer Checklists",pages,"portrait");
+    openPrintWin("Dealer Checklists — Car Shopping 2026",pages);
   };
 
-  // Build comparison print page — accepts 2 or 3 vehicle objects
+  // ── Comparison: landscape, page 1 = specs+ratings, page 2+ = checklist ─────
   const printComparison=(cols)=>{
     if(cols.filter(Boolean).length<2){showToast("Select at least two vehicles to compare.","err");return;}
     const vehicles=cols.filter(Boolean);
     const ncols=vehicles.length;
     const gridClass=ncols===3?"print-cmp3":"print-cmp2";
-
     const specVal=(v,key)=>key==="msrp"?v.msrp:(v.specs[key]||"—");
 
+    const heads=vehicles.map(v=>`<div class="print-cmp-head" style="${v.isCurrent?"color:#ffd580!important":""}">${v.isCurrent?"📍 ":""}${v.label}</div>`).join("");
+
+    // Page 1: specs + ratings (all the static data — fits on one landscape page)
     const specRows=SPEC_GROUPS.map(grp=>{
       const hdr=`<div class="print-cmp-section">${grp.group}</div>`;
       const rows=grp.rows.map(sr=>{
@@ -478,56 +532,75 @@ function App() {
       return hdr+rows;
     }).join("");
 
-    const ratingHdr=`<div class="print-cmp-section">📊 Your Section Ratings</div>`;
-    const progRow=(()=>{
-      const cells=vehicles.map(v=>{const p=overallProgress(v.id,checks,VEHICLE_SECTIONS);return`<div class="print-cmp-cell">${p.done}/${p.total} (${p.pct}%)</div>`;}).join("");
-      return`<div class="print-cmp-label">Checklist Progress</div>${cells}`;
-    })();
     const ratingRows=VEHICLE_SECTIONS.map(sec=>{
       const vals=vehicles.map(v=>v.isCurrent?null:(ratings[v.id+"|"+sec.id]||0));
-      const cells=vals.map(r=>r===null?`<div class="print-cmp-cell">N/A</div>`:`<div class="print-cmp-cell">${r>0?starStr(r):"—"}</div>`).join("");
+      const cells=vals.map(r=>r===null
+        ?`<div class="print-cmp-cell print-cmp-note">N/A (current)</div>`
+        :`<div class="print-cmp-cell">${r>0?starStr(r):"not rated"}</div>`).join("");
       return`<div class="print-cmp-label">${sec.icon} ${sec.label}</div>${cells}`;
     }).join("");
 
-    const checkHdr=`<div class="print-cmp-section">☑ Evaluation Checklist Items</div>`;
+    const progRow=(()=>{
+      const cells=vehicles.map(v=>{
+        if(v.isCurrent)return`<div class="print-cmp-cell print-cmp-note">N/A</div>`;
+        const p=overallProgress(v.id,checks,VEHICLE_SECTIONS);
+        return`<div class="print-cmp-cell">${p.done}/${p.total} (${p.pct}%)</div>`;
+      }).join("");
+      return`<div class="print-cmp-label">Checklist Progress</div>${cells}`;
+    })();
+
+    const decNotes=notes["decision|final"]||"";
+    const dateStr=new Date().toLocaleDateString();
+    const subLine=`Printed ${dateStr} · Vernon, CT · Andrew Holl${showCurrent?" · Includes: 2016 Volvo XC70":""}`;
+
+    const page1=`<div class="print-page">
+      <div class="print-header">
+        <div class="print-header-title">Side-by-Side Comparison — Specs &amp; Ratings (Page 1 of 2)</div>
+        <div class="print-header-sub">${subLine}</div>
+      </div>
+      <div class="print-cmp-wrap ${gridClass}">
+        <div class="print-cmp-head">Specification</div>${heads}
+        ${specRows}
+        <div class="print-cmp-section">📊 Your Section Ratings</div>
+        ${progRow}
+        ${ratingRows}
+      </div>
+      ${decNotes?`<div style="margin-top:6px;font-size:6.5pt;border:1px solid #ddd;border-radius:3px;padding:4px 7px;"><strong>Decision notes:</strong> ${decNotes}</div>`:""}
+    </div>`;
+
+    // Page 2: checklist item comparison (may flow to multiple pages naturally)
     const checkRows=VEHICLE_SECTIONS.map(sec=>{
-      const secHdr=`<div class="print-cmp-section" style="background:#f0f4f0;">${sec.icon} ${sec.label}</div>`;
+      const secHdr=`<div class="print-cmp-section" style="background:#edf2ed!important;">${sec.icon} ${sec.label}</div>`;
       const itemRows=sec.items.map(it=>{
         const vals=vehicles.map(v=>v.isCurrent?null:(checks[v.id+"|"+sec.id+"|"+it.id]||false));
-        const anyTrue=vals.some(v=>v===true);
-        const anyFalse=vals.some(v=>v===false);
-        const diff=anyTrue&&anyFalse;
+        const anyDiff=vals.filter(v=>v!==null).some((v,_,arr)=>v!==arr[0]);
         const cells=vals.map(v=>v===null
           ?`<div class="print-cmp-cell print-cmp-note">N/A</div>`
-          :`<div class="print-cmp-cell ${v?"ck":"unc"}${diff?" print-cmp-diff":""}">${v?"✔":"—"}</div>`
+          :`<div class="print-cmp-cell ${v?"ck":"unc"}${anyDiff?" print-cmp-diff":""}">${v?"✔ Done":"—"}</div>`
         ).join("");
-        return`<div class="print-cmp-label" style="font-size:6.5pt">${it.text}</div>${cells}`;
+        return`<div class="print-cmp-label">${it.text}</div>${cells}`;
       }).join("");
       const noteRow=(()=>{
         const ns=vehicles.map(v=>v.isCurrent?"N/A":(notes[v.id+"|"+sec.id]||""));
-        if(ns.every(n=>!n||n==="N/A")) return"";
-        const cells=ns.map(n=>`<div class="print-cmp-cell print-cmp-note">${n||"—"}</div>`).join("");
-        return`<div class="print-cmp-label print-cmp-note">Notes</div>${cells}`;
+        if(ns.every(n=>!n||n==="N/A"))return"";
+        return`<div class="print-cmp-label print-cmp-note">Notes</div>`+
+          ns.map(n=>`<div class="print-cmp-cell print-cmp-note">${n||"—"}</div>`).join("");
       })();
       return secHdr+itemRows+noteRow;
     }).join("");
 
-    const decNotes=notes["decision|final"]||"";
-    const heads=vehicles.map(v=>`<div class="print-cmp-head">${v.label}</div>`).join("");
-    const html=`<div class="print-page">
+    const page2=`<div class="print-page">
       <div class="print-header">
-        <div class="print-header-title">Side-by-Side Comparison${ncols===3?" (3 Vehicles)":""}</div>
-        <div class="print-header-sub">Printed ${new Date().toLocaleDateString()} · Vernon, CT · Andrew Holl${showCurrent?" · Includes current vehicle: 2016 Volvo XC70":""}</div>
+        <div class="print-header-title">Side-by-Side Comparison — Evaluation Checklist (Page 2 of 2)</div>
+        <div class="print-header-sub">${subLine} &nbsp;·&nbsp; <span style="color:#ffd580;">Yellow = answers differ between vehicles</span></div>
       </div>
       <div class="print-cmp-wrap ${gridClass}">
-        <div class="print-cmp-head">Specification / Criterion</div>${heads}
-        ${specRows}
-        ${ratingHdr}${progRow}${ratingRows}
-        ${checkHdr}${checkRows}
+        <div class="print-cmp-head">Checklist Item</div>${heads}
+        ${checkRows}
       </div>
-      ${decNotes?`<div style="margin-top:7px;font-size:7pt;border:1px solid #ddd;border-radius:3px;padding:5px 8px;"><strong>Decision notes:</strong> ${decNotes}</div>`:""}
     </div>`;
-    openPrintWin(`Comparison (${ncols} vehicles)`,html,"landscape");
+
+    openPrintWin(`Comparison (${ncols} vehicles) — Car Shopping 2026`,page1+page2);
   };
 
   // ── Section renderer ─────────────────────────────────────────────────────────
